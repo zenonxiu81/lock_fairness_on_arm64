@@ -1,5 +1,5 @@
 /**
- * 8_queens.c
+ * spinlock_test.c
  * Copyright (C) 2021 Zenon Xiu
  *
  * This program is free software: you can redistribute it and/or modify
