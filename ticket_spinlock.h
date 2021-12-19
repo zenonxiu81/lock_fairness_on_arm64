@@ -1,5 +1,5 @@
 /**
- * 8_queens.c
+ * ticket_spinlock.h
  * Copyright (C) 2021 Zenon Xiu
  *
  * This program is free software: you can redistribute it and/or modify
