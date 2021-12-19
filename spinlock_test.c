@@ -58,7 +58,7 @@ void * lock_test(void * a)
 {
   int id, raw_id; 
   unsigned int  i;
-	payload * p = ( payload *)a;
+  payload * p = ( payload *)a;
   cpu_set_t cpuset;
   int ret;
   pthread_t pid;
