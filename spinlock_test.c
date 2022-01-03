@@ -20,7 +20,7 @@
 #include <stdio.h>
 
 #ifdef SPINLOCK
- #include "spin_lock.h"
+ #include "spinlock.h"
 #endif 
 
 #ifdef TICKET_SPINLOCK
