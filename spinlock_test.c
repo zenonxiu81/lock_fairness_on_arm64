@@ -51,7 +51,7 @@ typedef struct {
 
 payload lock_test_data;
 
-pthread_t tidp[2];
+volatile pthread_t tidp[2];
 
 
 void * lock_test(void * a)
@@ -62,28 +62,30 @@ void * lock_test(void * a)
   cpu_set_t cpuset;
   int ret;
   pthread_t pid;
-    
-   
-   while(tidp[0]==0); //Wait for thread 0 being created.
+  volatile static int T0_started=0;
+  volatile static int T1_started=0;    
+
+  while(tidp[0]==0); //Wait for thread 0 being created.
+  while(tidp[1]==0); //Wait for thread 1 being created
+  
+  pid=pthread_self();
+
+  if(pid==tidp[0]){
    CPU_ZERO(&cpuset);
    CPU_SET(p->cpu_run_T0,&cpuset);  //set which CPU to run the thread 0
    pthread_setname_np(tidp[0],"spinlock T0");
    ret=pthread_setaffinity_np(tidp[0],sizeof(cpu_set_t),&cpuset);
    if(ret<0)
-    printf("set thread0 affinity failed.. %d\n",ret);
+    printf("set thread0 affinity failed.. %d\n",ret);   
+   printf("T0 started!\n");
+	  
+   T0_started=1;
+    __asm__("dmb ish");
+    while(T1_started==0);  // T0, T1 start the test together
+    __asm__("dmb ish");
    
-   while(tidp[1]==0); //Wait for thread 1 being created.
-   CPU_ZERO(&cpuset);
-   CPU_SET(p->cpu_run_T1,&cpuset);  //set which CPU to run the thread 1
-   pthread_setname_np(tidp[1],"spinlock T1");
-   ret=pthread_setaffinity_np(tidp[1],sizeof(cpu_set_t),&cpuset);
-  if(ret<0)
-   printf("set thread1 affinity failed.. %d\n", ret);
-  
-  pid=pthread_self();
+  /*******start of the test******/  
 
-  if(pid==tidp[0]){
-  printf("T0 started!\n");
   for(i=0;i<p->total; i++)
     {
     //id=get_cpu_id();
@@ -97,10 +99,27 @@ void * lock_test(void * a)
      }
     spin_unlock(&(p->lock)); 
    }  
+	  
+  /*******end of the test******/  
+	  
    printf("T0 done!\n");
   }
   else if(pid==tidp[1]){
-   printf("T1 started!\n");
+   CPU_ZERO(&cpuset);
+   CPU_SET(p->cpu_run_T1,&cpuset);  //set which CPU to run the thread 0
+   pthread_setname_np(tidp[1],"spinlock T1");
+   ret=pthread_setaffinity_np(tidp[1],sizeof(cpu_set_t),&cpuset);
+   if(ret<0)
+    printf("set thread1 affinity failed.. %d\n",ret);
+   printf("T1 started!\n");  
+   T1_started=1;
+   __asm__("dmb ish");
+   while(T0_started==0); //T0, T1 start the test together
+   __asm__("dmb ish");
+
+  /*******start of the test******/  
+    
+	  
     for(i=0;i<p->total; i++)
      {
       //id=get_cpu_id();
@@ -114,8 +133,11 @@ void * lock_test(void * a)
        }
       spin_unlock(&(p->lock)); 
      } 
+  /*******end of the test******/  	  
    printf("T1 done!\n"); 
   } 	
+	
+pthread_exit(NULL);	
 }
 
 int main(int agrc,char* argv[])
@@ -159,7 +181,7 @@ int main(int agrc,char* argv[])
    } 
  }
  
- printf("Parameter used: -c %d -n %d %d\n",lock_test_data.total,lock_test_data.cpu_run_T0,lock_test_data.cpu_run_T1);
+ printf("Parameter used: -n %d -c %d %d\n",lock_test_data.total,lock_test_data.cpu_run_T0,lock_test_data.cpu_run_T1);
 
 
  __asm__("dmb ish ");
@@ -177,7 +199,7 @@ int main(int agrc,char* argv[])
     printf("create error!\n");
     return 1;
   }
-
+  __asm__("dmb ish");
   if (pthread_join(tidp[0], NULL))
   {
     printf("thread is not exit...\n");
@@ -190,7 +212,7 @@ int main(int agrc,char* argv[])
     return -2;
   }
  
- printf("T0 num: %d, T1 num: %d \n",lock_test_data.Num_of_cpu0,lock_test_data.Num_of_cpu1);
+  printf("T0 num: %d, T1 num: %d \n",lock_test_data.Num_of_cpu0,lock_test_data.Num_of_cpu1);
   return 0;	
 	
 }
